@@ -1,5 +1,5 @@
 #include "internal.hpp"
-
+#include <iostream>
 namespace CaDiCaL {
 
 // This function determines the next decision variable on the queue, without
@@ -322,6 +322,7 @@ int Internal::decide () {
   } else {
 
     int decision = ask_decision ();
+    // std::cerr << "external decision: " << decision << std::endl;
     if ((size_t) level < assumptions.size () ||
         ((size_t) level == assumptions.size () && constraint.size ())) {
       // Forced backtrack below pseudo decision levels.
@@ -336,6 +337,7 @@ int Internal::decide () {
         const bool target = (opts.target > 1 || (stable && opts.target));
         decision = decide_phase (idx, target);
       }
+      // std::cerr << "final decision: " << decision << std::endl;
       search_assume_decision (decision);
     }
   }

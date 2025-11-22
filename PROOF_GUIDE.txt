@@ -1,0 +1,100 @@
+================================================================================
+                   PROOF OUTPUT - QUICK REFERENCE
+================================================================================
+
+BASIC PROOF OUTPUT
+==================
+
+1. DRAT Format (Default, most common)
+   ./priority_branch --proof=output.drat problem.cnf branches.txt
+
+2. LRAT Format (With hints for faster checking)
+   ./priority_branch --lrat --proof=output.lrat problem.cnf branches.txt
+
+3. FRAT Format (Modern format)
+   ./priority_branch --frat --proof=output.frat problem.cnf branches.txt
+
+4. Binary Format (Compressed)
+   ./priority_branch --binary --proof=output.drat problem.cnf branches.txt
+
+
+PROOF FORMAT COMPARISON
+========================
+
+Format    | Size   | Features                  | Use Case
+----------|--------|---------------------------|---------------------------
+DRAT      | Medium | Standard, widely used     | General purpose
+LRAT      | Large  | Includes hints            | Faster verification
+FRAT      | Medium | Modern with finalization  | Advanced use
+Binary    | Small  | Compressed                | Save space
+
+
+VERIFICATION
+============
+
+For DRAT proofs (using drat-trim):
+  drat-trim problem.cnf output.drat
+
+For LRAT proofs (using lrat-check):
+  lrat-check problem.cnf output.lrat
+
+
+EXAMPLES
+========
+
+Example 1: Basic DRAT proof
+  $ ./priority_branch --proof=proof.drat test.cnf branch_list.txt
+  $ ls -lh proof.drat
+  -rw-r--r-- 1 user user 2.3K Nov 22 proof.drat
+
+Example 2: LRAT proof with internal checking
+  $ ./priority_branch --lrat --proof=proof.lrat -o check=1 test.cnf branch_list.txt
+
+Example 3: Binary compressed proof
+  $ ./priority_branch --binary --proof=proof.drat test.cnf branch_list.txt
+  # Much smaller file size!
+
+Example 4: Proof to stdout
+  $ ./priority_branch --proof=/dev/stdout test.cnf branch_list.txt > proof.drat
+
+
+IMPORTANT NOTES
+===============
+
+⚠ Proof tracing must be enabled BEFORE reading the CNF file
+   (This is handled automatically in priority_branch)
+
+✓ Proof is only written for UNSAT problems
+  (SAT problems don't need proofs - the solution itself is the certificate)
+
+✓ Use flush_proof_trace() to ensure all data is written
+
+
+IN YOUR C++ CODE
+================
+
+// Enable proof BEFORE reading CNF
+solver.trace_proof("proof.drat");
+
+// Read CNF
+solver.read_dimacs("problem.cnf", vars, 1);
+
+// ... solve ...
+
+// Flush and close proof
+solver.flush_proof_trace();
+solver.close_proof_trace();
+
+
+CADICAL OPTIONS FOR PROOFS
+===========================
+
+--check=1              Enable internal proof checking
+--lrat                 Use LRAT format
+--frat                 Use FRAT format
+--binary               Use binary format
+--verbose=1            Show proof statistics
+
+
+================================================================================
+

@@ -1,0 +1,56 @@
+================================
+  优先分支 - 快速上手指南
+================================
+
+【已编译好的文件】
+  ✓ priority_branch      - 可执行程序
+  ✓ test.cnf            - 测试CNF文件
+  ✓ branch_list.txt     - 分支列表示例
+
+【基本用法】
+  ./priority_branch <CNF文件> <分支列表文件> [-v]
+
+【运行示例】
+  # 基本运行
+  ./priority_branch test.cnf branch_list.txt
+
+  # 详细模式（显示分支过程）
+  ./priority_branch test.cnf branch_list.txt -v
+
+【分支列表文件格式】
+  - 每行一个带符号的整数
+  - 正数: 变量=true,  负数: 变量=false
+  - # 或 c 开头是注释
+  - 空行会被忽略
+
+  示例 (branch_list.txt):
+    # 强制分支顺序
+    -3    # 先将变量3设为false
+    1     # 再将变量1设为true
+    -2    # 再将变量2设为false
+    4     # 最后将变量4设为true
+
+【用自己的文件】
+  1. 准备你的CNF文件 (例如 problem.cnf)
+  2. 创建分支列表文件 (例如 my_branches.txt)
+  3. 运行: ./priority_branch problem.cnf my_branches.txt
+
+【在代码中使用】
+  见 example_priority_branch.cpp 和 使用说明.md
+
+【重要提示】
+  ⚠ 分支列表中的变量必须存在于CNF文件中
+  ⚠ 变量编号从1开始
+  ⚠ 列表可以只包含部分变量，其余由求解器自动选择
+
+【输出格式】
+  - s SATISFIABLE   : 可满足
+  - s UNSATISFIABLE : 不可满足
+  - v ... 0         : 解（DIMACS格式）
+
+【更多文档】
+  使用说明.md - 详细使用文档
+  src/priority_branching_propagator.hpp - API文档
+
+================================
+

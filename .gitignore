@@ -2,3 +2,4 @@ build
 makefile
 .aider*
 *~
+miniconda.sh

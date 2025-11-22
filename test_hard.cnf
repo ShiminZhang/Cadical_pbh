@@ -1,0 +1,11 @@
+c Harder problem that requires decisions
+p cnf 5 8
+1 2 3 0
+-1 2 3 0
+1 -2 3 0
+1 2 -3 0
+-1 -2 4 0
+-1 2 -4 0
+1 -2 -4 0
+-1 -2 -3 5 0
+
