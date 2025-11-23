@@ -8,12 +8,16 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <ctime>
+#include <sys/time.h>
 
 using namespace std;
 using namespace CaDiCaL;
 
 void print_usage(const char* program_name) {
-  cout << "Usage: " << program_name << " [options] <cnf-file> <branch-list-file>" << endl;
+  cout << "Usage: " << program_name << " [options] <cnf-file> [branch-list-file]" << endl;
+  cout << endl;
+  cout << "Note: branch-list-file is optional. If not provided, uses default CaDiCaL heuristic." << endl;
   cout << endl;
   cout << "Options:" << endl;
   cout << "  -h, --help              Show this help message" << endl;
@@ -108,11 +112,14 @@ int main(int argc, char** argv) {
     }
   }
   
-  if (cnf_file.empty() || branch_file.empty()) {
-    cerr << "Error: Missing required arguments" << endl;
+  if (cnf_file.empty()) {
+    cerr << "Error: Missing CNF file" << endl;
     print_usage(argv[0]);
     return 1;
   }
+  
+  // branch_file is now optional
+  bool use_priority_branching = !branch_file.empty();
   
   // Create solver and propagator
   Solver solver;
@@ -144,7 +151,11 @@ int main(int argc, char** argv) {
     cout << "c Priority Branching SAT Solver (CaDiCaL)" << endl;
     cout << "c" << endl;
     cout << "c CNF file:        " << cnf_file << endl;
-    cout << "c Branch list:     " << branch_file << endl;
+    if (use_priority_branching) {
+      cout << "c Branch list:     " << branch_file << endl;
+    } else {
+      cout << "c Branch list:     (none - using default heuristic)" << endl;
+    }
     if (!proof_file.empty()) {
       cout << "c Proof output:    " << proof_file << endl;
     }
@@ -223,48 +234,54 @@ int main(int argc, char** argv) {
     cout << "c" << endl;
   }
   
-  // Connect external propagator
-  solver.connect_external_propagator(&propagator);
-  
-  // Load branch list from file
-  if (verbose) {
-    cout << "c Loading branch list..." << endl;
-  }
-  
-  if (!propagator.load_branch_list_from_file(branch_file)) {
-    cerr << "Error: Failed to load branch list from: " << branch_file << endl;
-    solver.disconnect_external_propagator();
-    return 1;
-  }
-  
-  const vector<int>& branch_list = propagator.get_branch_on_list();
-  if (!quiet) {
-    cout << "c Loaded " << branch_list.size() << " priority variables" << endl;
-  }
-  
-  // Mark all branching variables as observed
-  if (verbose) {
-    cout << "c Adding observed variables..." << endl;
-  }
-  
-  int observed_count = 0;
-  for (int lit : branch_list) {
-    int var = abs(lit);
-    if (var > max_var) {
-      cerr << "Warning: Variable " << var 
-           << " in branch list exceeds max variable " << max_var << endl;
-    } else {
-      solver.add_observed_var(var);
-      observed_count++;
-      if (verbose) {
-        cout << "c   Observed variable: " << var << endl;
+  // Connect external propagator only if using priority branching
+  if (use_priority_branching) {
+    solver.connect_external_propagator(&propagator);
+    
+    // Load branch list from file
+    if (verbose) {
+      cout << "c Loading branch list..." << endl;
+    }
+    
+    if (!propagator.load_branch_list_from_file(branch_file)) {
+      cerr << "Error: Failed to load branch list from: " << branch_file << endl;
+      return 1;
+    }
+    
+    const vector<int>& branch_list = propagator.get_branch_on_list();
+    if (!quiet) {
+      cout << "c Loaded " << branch_list.size() << " priority variables" << endl;
+    }
+    
+    // Mark all branching variables as observed
+    if (verbose) {
+      cout << "c Adding observed variables..." << endl;
+    }
+    
+    int observed_count = 0;
+    for (int lit : branch_list) {
+      int var = abs(lit);
+      if (var > max_var) {
+        cerr << "Warning: Variable " << var 
+             << " in branch list exceeds max variable " << max_var << endl;
+      } else {
+        solver.add_observed_var(var);
+        observed_count++;
+        if (verbose) {
+          cout << "c   Observed variable: " << var << endl;
+        }
       }
     }
-  }
-  
-  if (!quiet) {
-    cout << "c Added " << observed_count << " observed variables" << endl;
-    cout << "c" << endl;
+    
+    if (!quiet) {
+      cout << "c Added " << observed_count << " observed variables" << endl;
+      cout << "c" << endl;
+    }
+  } else {
+    if (!quiet) {
+      cout << "c No branch list provided, using default CaDiCaL heuristic" << endl;
+      cout << "c" << endl;
+    }
   }
   
   // Solve
@@ -275,7 +292,16 @@ int main(int argc, char** argv) {
     }
   }
   
+  // Start timing
+  struct timeval start_time, end_time;
+  gettimeofday(&start_time, NULL);
+  
   int result = solver.solve();
+  
+  // End timing
+  gettimeofday(&end_time, NULL);
+  double elapsed = (end_time.tv_sec - start_time.tv_sec) + 
+                   (end_time.tv_usec - start_time.tv_usec) / 1000000.0;
   
   if (verbose && !quiet) {
     cout << "c =============================" << endl;
@@ -284,6 +310,7 @@ int main(int argc, char** argv) {
   if (!quiet) {
     cout << "c" << endl;
     cout << "c Solving finished" << endl;
+    cout << "c Solve time: " << elapsed << " seconds" << endl;
     cout << "c" << endl;
   }
   
@@ -317,10 +344,12 @@ int main(int argc, char** argv) {
     
     if (!quiet) {
       cout << "c" << endl;
-      cout << "c Priority branching statistics:" << endl;
-      cout << "c   Total priority variables: " << branch_list.size() << endl;
-      cout << "c   Processed: " << propagator.get_processed_count() << endl;
-      cout << "c   Remaining: " << propagator.get_remaining_count() << endl;
+      if (use_priority_branching) {
+        cout << "c Priority branching statistics:" << endl;
+        cout << "c   Total priority variables: " << propagator.get_branch_on_list().size() << endl;
+        cout << "c   Processed: " << propagator.get_processed_count() << endl;
+        cout << "c   Remaining: " << propagator.get_remaining_count() << endl;
+      }
     }
     
   } else if (result == 20) {
@@ -329,8 +358,10 @@ int main(int argc, char** argv) {
     cout << "s UNKNOWN" << endl;
   }
   
-  // Disconnect propagator
-  solver.disconnect_external_propagator();
+  // Disconnect propagator if it was connected
+  if (use_priority_branching) {
+    solver.disconnect_external_propagator();
+  }
   
   return result == 10 ? 10 : result == 20 ? 20 : 0;
 }
